@@ -73,3 +73,18 @@ def test_outliers_none_for_non_numeric(sample_csv):
 
 def test_infer_type_empty_column():
     assert infer_type(pd.Series([None, None], dtype=object)) == "empty"
+
+
+def test_profile_accepts_dataframe(sample_csv):
+    df = pd.read_csv(sample_csv)
+    p = profile_csv(df)
+    assert p["n_rows"] == 5
+    assert p["duplicate_rows"] == 1
+    assert p["path"] is None  # no source given, none reported
+
+
+def test_profile_dataframe_with_path_override(sample_csv):
+    df = pd.read_csv(sample_csv)
+    p = profile_csv(df, path="sample.csv")
+    assert p["path"] == "sample.csv"
+    assert p["n_rows"] == 5

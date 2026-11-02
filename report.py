@@ -2,8 +2,9 @@
 
 
 def render_report(profile):
+    source = profile["path"] or "data"
     lines = [
-        f"# csv-doctor profile: `{profile['path']}`",
+        f"# csv-doctor profile: `{source}`",
         "",
         "## Overview",
         "",

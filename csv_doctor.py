@@ -36,6 +36,12 @@ def main(argv=None):
         default=None,
         help="Fill missing values with VALUE (parsed as a number when possible)",
     )
+    p_clean.add_argument(
+        "--smart-fill",
+        action="store_true",
+        help="Fill each column from its own data: median for numbers, "
+        "most common value for text",
+    )
     p_clean.add_argument("--dedupe", action="store_true", help="Drop duplicate rows")
     p_clean.add_argument(
         "--strip", action="store_true", help="Strip leading/trailing whitespace from text values"
@@ -59,7 +65,8 @@ def main(argv=None):
         return 1
 
     if args.command == "profile":
-        report = render_report(profile_csv(args.file))
+        # profile_csv takes the frame we already read — no second trip to disk
+        report = render_report(profile_csv(df, path=args.file))
         print(report, end="")
         if args.out:
             with open(args.out, "w") as f:
@@ -72,6 +79,7 @@ def main(argv=None):
         "strip": args.strip,
         "lower": args.lower,
         "dropna": args.dropna,
+        "smart_fill": args.smart_fill,
         "fillna": args.fillna,
         "dedupe": args.dedupe,
     }
@@ -83,7 +91,8 @@ def main(argv=None):
     )
 
     if args.report:
-        report = render_report(profile_csv(args.out))
+        # profile the in-memory frame, not a re-read of the file we just wrote
+        report = render_report(profile_csv(cleaned, path=args.out))
         with open(args.report, "w") as f:
             f.write(report)
         print(f"wrote {args.report}", file=sys.stderr)

@@ -15,12 +15,24 @@ LOW_CARDINALITY_CUTOFF = 12
 _BOOL_WORDS = {"true", "false", "t", "f", "yes", "no", "y", "n", "1", "0"}
 
 
-def profile_csv(path, top_n=5):
-    """Profile the CSV at *path* and return a summary dict."""
-    # TODO: read in chunks for files that don't fit in memory
-    df = pd.read_csv(path)
+def profile_csv(source, top_n=5, path=None):
+    """Profile the CSV at *source* and return a summary dict.
+
+    *source* is a file path, or an already-loaded DataFrame — pass the
+    frame when you have one, to avoid reading the same file twice
+    (e.g. profiling the cleaned frame right after `clean`).
+    *path* overrides the reported source, handy when a DataFrame came
+    from a known file.
+    """
+    if isinstance(source, pd.DataFrame):
+        df = source
+    else:
+        # TODO: read in chunks for files that don't fit in memory
+        df = pd.read_csv(source)
+        if path is None:
+            path = str(source)
     return {
-        "path": str(path),
+        "path": path,
         "n_rows": len(df),
         "n_columns": len(df.columns),
         "duplicate_rows": int(df.duplicated().sum()),
