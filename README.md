@@ -4,6 +4,19 @@ A small command-line tool that profiles a messy CSV and cleans it up. Point it a
 
 I built this as a learning project — mostly to get more comfortable with pandas and to have something I actually reach for when a dataset looks sketchy before I start working with it. It's simple on purpose.
 
+## Web UI
+
+The same profiler and cleaner behind a web page — upload a CSV (or paste CSV text) and see the profile in the browser, then clean it with checkboxes and download the result.
+
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+Open http://127.0.0.1:5000. Upload a `.csv` file, paste CSV text, or click "Try the sample file". The profile page shows row/column/duplicate counts, a preview of the first 10 rows, and one card per column with its inferred type, null %, unique count, top values, and any IQR outliers. The cleaning form has checkboxes for strip, lowercase headers, smart fill, drop rows with missing values, and dedupe, plus a fill-missing-values field. After cleaning you get before/after row counts, a preview of the cleaned data, and buttons to download the cleaned CSV and a markdown profile report of it. Uploaded data stays in memory only — nothing is written to disk.
+
+The bundled sample (`samples/messy.csv`) is 10 rows of customer data — names, ages, cities, and scores — with the usual mess: stray spaces in names and cities, two missing ages, one duplicated row, and a score of 999.0 that stands out from the rest. The profile shows 10 rows, 4 columns, 1 duplicate row, Age at 20% null, City with 3 unique values (" Irvine" and "Irvine" count separately until the spaces are stripped), and one IQR outlier on Score.
+
 ## Install
 
 ```bash
@@ -32,6 +45,7 @@ Cleaning flags:
 | `--lower` | Lowercase (and trim) column names |
 | `--dropna` | Drop rows with any missing value |
 | `--fillna VALUE` | Fill missing values with VALUE (parsed as a number when possible) |
+| `--smart-fill` | Fill each column from its own data: median for numbers, most common value for text |
 | `--dedupe` | Drop duplicate rows |
 | `--report FILE` | Also write a profile report of the cleaned file |
 
@@ -95,4 +109,4 @@ pytest
 
 - The whole file is read into memory, so very large CSVs will be slow or won't fit. Chunked reading is on the TODO list.
 - Type inference is heuristic — a column of `1`s and `0`s is guessed as bool, and dates are whatever `pandas.to_datetime` accepts. Good enough for a first pass, not a validator.
-- `--fillna` fills every column with the same value; per-column fills (median for numerics, mode for strings) would be nicer.
+- `--fillna` fills every column with the same value; `--smart-fill` fills each column from its own data instead (median for numbers, mode for text).
