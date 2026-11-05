@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profile &mdash; csv-doctor</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="page results-page">
+  <header class="results-bar">
+    <div>
+      <a class="back" href="{{ url_for('index') }}">&larr; New file</a>
+      <h1>{{ filename }}</h1>
+      <p class="subtitle">{{ profile.n_rows }} rows &middot; {{ profile.n_columns }}
+        column{{ "s" if profile.n_columns != 1 else "" }} &middot;
+        {{ profile.duplicate_rows }} duplicate row{{ "s" if profile.duplicate_rows != 1 else "" }}</p>
+    </div>
+  </header>
+
+  <section class="stat-grid">
+    <div class="stat-card">
+      <span class="stat-value">{{ "{:,}".format(profile.n_rows) }}</span>
+      <span class="stat-label">Rows</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value">{{ profile.n_columns }}</span>
+      <span class="stat-label">Columns</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value">{{ "{:,}".format(profile.duplicate_rows) }}</span>
+      <span class="stat-label">Duplicate rows</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Preview &mdash; first {{ preview.rows|length }} rows</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>{% for col in preview.columns %}<th>{{ col }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+          {% for row in preview.rows %}
+          <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if preview.truncated %}
+    <p class="truncated-note">Showing the first {{ preview.rows|length }} of {{ "{:,}".format(preview.n_rows) }} rows.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2 class="section-title">Columns</h2>
+    <div class="col-grid">
+      {% for col in profile.columns %}
+      <div class="col-card">
+        <h3>{{ col.name }}</h3>
+        <dl>
+          <div><dt>Type</dt><dd>{{ col.inferred_type }}</dd></div>
+          <div><dt>Null</dt><dd>{{ col.null_pct }}%</dd></div>
+          <div><dt>Unique values</dt><dd>{{ "{:,}".format(col.n_unique) }}</dd></div>
+        </dl>
+        {% if col.top_values %}
+        <table class="mini-table">
+          <thead><tr><th>Value</th><th>Count</th></tr></thead>
+          <tbody>
+            {% for value, count in col.top_values %}
+            <tr><td>{{ value }}</td><td>{{ count }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+        {% if col.outliers and col.outliers.count %}
+        <p class="outlier-note">Outliers (IQR): {{ col.outliers.count }} ({{ col.outliers.pct }}%),
+          outside [{{ col.outliers.bounds[0] }}, {{ col.outliers.bounds[1] }}]</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Clean it</h2>
+    <form action="{{ url_for('clean_file', file_id=file_id) }}" method="post">
+      <div class="check-grid">
+        <label class="check"><input type="checkbox" name="strip" {% if applied.strip %}checked{% endif %}>
+          <span><strong>Strip whitespace</strong> &mdash; trim text values</span></label>
+        <label class="check"><input type="checkbox" name="lower" {% if applied.lower %}checked{% endif %}>
+          <span><strong>Lowercase headers</strong> &mdash; tidy column names</span></label>
+        <label class="check"><input type="checkbox" name="smart_fill" {% if applied.smart_fill %}checked{% endif %}>
+          <span><strong>Smart fill</strong> &mdash; median for numbers, most common value for text</span></label>
+        <label class="check"><input type="checkbox" name="dropna" {% if applied.dropna %}checked{% endif %}>
+          <span><strong>Drop rows with missing values</strong></span></label>
+        <label class="check"><input type="checkbox" name="dedupe" {% if applied.dedupe %}checked{% endif %}>
+          <span><strong>Drop duplicate rows</strong></span></label>
+        <label class="fillna">
+          <span><strong>Fill missing values with</strong></span>
+          <input type="text" name="fillna" value="{{ applied.fillna or '' }}" placeholder="e.g. 0 or unknown">
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary">Clean it</button>
+    </form>
+
+    {% if cleaned %}
+    <div class="cleaned">
+      <h3>Cleaned result</h3>
+      <p class="cleaned-counts">{{ "{:,}".format(profile.n_rows) }} rows &rarr;
+        {{ "{:,}".format(cleaned.n_rows) }} rows &middot;
+        {{ "{:,}".format(profile.duplicate_rows) }} duplicate rows &rarr;
+        {{ "{:,}".format(cleaned.duplicate_rows) }}</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>{% for col in cleaned_preview.columns %}<th>{{ col }}</th>{% endfor %}</tr>
+          </thead>
+          <tbody>
+            {% for row in cleaned_preview.rows %}
+            <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if cleaned_preview.truncated %}
+      <p class="truncated-note">Showing the first {{ cleaned_preview.rows|length }} of {{ "{:,}".format(cleaned_preview.n_rows) }} rows.</p>
+      {% endif %}
+      <div class="download-row">
+        <a class="btn btn-primary" href="{{ url_for('download', file_id=file_id) }}">Download cleaned CSV</a>
+        <a class="btn btn-ghost" href="{{ url_for('report', file_id=file_id) }}">Download profile report (.md)</a>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+</div>
+</body>
+</html>

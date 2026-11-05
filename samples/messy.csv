@@ -1,0 +1,11 @@
+Name,Age,City,Score
+ Alice ,30, Irvine,88.5
+Bob,,Newport,72.0
+ Alice ,30, Irvine,88.5
+Carol,25,Newport,91.0
+Dave,41,Irvine,65.5
+ Eve ,29,Newport,999.0
+Frank,33, Irvine,79.0
+Grace,27,Newport,84.0
+Heidi,,Irvine,77.5
+Ivan,36,Newport,90.0

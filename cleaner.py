@@ -38,8 +38,11 @@ def clean(df, ops):
 
 def strip_whitespace(df):
     """Strip leading/trailing whitespace from text values in place-ish."""
+    # is_string_dtype covers both the old object dtype and the str dtype
+    # pandas 3 reads text columns into — checking the dtype string
+    # ("object" / "string") misses the latter.
     for col in df.columns:
-        if str(df[col].dtype) in ("object", "string"):
+        if pd.api.types.is_string_dtype(df[col].dtype):
             df[col] = df[col].map(lambda v: v.strip() if isinstance(v, str) else v)
     return df
 

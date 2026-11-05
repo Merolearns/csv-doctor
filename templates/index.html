@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>csv-doctor</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="page">
+  <header class="hero">
+    <h1>csv-doctor</h1>
+    <p class="subtitle">Profile a messy CSV and clean it up, in the browser. Upload a
+      file or paste CSV text, see what is wrong with it, then strip, fill,
+      and dedupe it and download the cleaned file. Runs entirely on your
+      machine &mdash; nothing is uploaded anywhere.</p>
+  </header>
+
+  {% if error %}
+  <div class="alert">{{ error }}</div>
+  {% endif %}
+
+  <main class="card">
+    <form action="{{ url_for('profile') }}" method="post" enctype="multipart/form-data" id="upload-form">
+      <label class="dropzone" id="dropzone">
+        <input type="file" name="csv" id="file-input" accept=".csv,text/csv" hidden>
+        <span class="dropzone-title">Drop a CSV here, or click to browse</span>
+        <span class="dropzone-hint">Up to 10 MB &middot; .csv files only</span>
+        <span class="dropzone-file" id="file-name"></span>
+      </label>
+
+      <div class="divider"><span>or paste CSV text</span></div>
+
+      <textarea name="pasted" rows="6" placeholder="Name,Age,City&#10; Alice ,30, Irvine&#10;Bob,,Newport"></textarea>
+
+      <div class="controls">
+        <button type="submit" class="btn btn-primary">Profile it</button>
+        <button type="submit" name="use_sample" value="1" class="btn btn-ghost" formnovalidate>
+          Try the sample file
+        </button>
+      </div>
+    </form>
+  </main>
+
+  <section class="how">
+    <div class="how-step">
+      <h2>1. Upload or paste</h2>
+      <p>Pick a CSV, paste CSV text, or use the bundled sample of messy customer data.</p>
+    </div>
+    <div class="how-step">
+      <h2>2. Read the profile</h2>
+      <p>Row and column counts, duplicate rows, and per-column types, nulls, top values, and outliers.</p>
+    </div>
+    <div class="how-step">
+      <h2>3. Clean and download</h2>
+      <p>Pick the cleaning steps, compare before and after, and download the cleaned CSV and its profile report.</p>
+    </div>
+  </section>
+</div>
+<script>
+  const dropzone = document.getElementById("dropzone");
+  const input = document.getElementById("file-input");
+  const fileName = document.getElementById("file-name");
+  function showName() {
+    fileName.textContent = input.files.length ? "Selected: " + input.files[0].name : "";
+  }
+  input.addEventListener("change", showName);
+  dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("drag"); });
+  dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag"));
+  dropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("drag");
+    if (e.dataTransfer.files.length) {
+      input.files = e.dataTransfer.files;
+      showName();
+    }
+  });
+</script>
+</body>
+</html>
