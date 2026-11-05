@@ -63,6 +63,19 @@ def main(argv=None):
     except pd.errors.EmptyDataError:
         print(f"error: file is empty: {args.file}", file=sys.stderr)
         return 1
+    except UnicodeDecodeError:
+        print(
+            f"error: {args.file} is not valid UTF-8 — convert it to UTF-8 and retry",
+            file=sys.stderr,
+        )
+        return 1
+    except pd.errors.ParserError:
+        print(
+            f"error: couldn't parse {args.file} as a CSV file "
+            "(check the quoting and delimiters)",
+            file=sys.stderr,
+        )
+        return 1
 
     if args.command == "profile":
         # profile_csv takes the frame we already read — no second trip to disk
