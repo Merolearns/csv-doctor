@@ -76,14 +76,23 @@ def main(argv=None):
             file=sys.stderr,
         )
         return 1
+    except OSError as e:
+        print(f"error: can't read {args.file}: {e.strerror or e}", file=sys.stderr)
+        return 1
 
     if args.command == "profile":
         # profile_csv takes the frame we already read — no second trip to disk
         report = render_report(profile_csv(df, path=args.file))
         print(report, end="")
         if args.out:
-            with open(args.out, "w") as f:
-                f.write(report)
+            try:
+                with open(args.out, "w") as f:
+                    f.write(report)
+            except OSError as e:
+                print(
+                    f"error: can't write {args.out}: {e.strerror or e}", file=sys.stderr
+                )
+                return 1
             print(f"wrote {args.out}", file=sys.stderr)
         return 0
 
@@ -97,7 +106,12 @@ def main(argv=None):
         "dedupe": args.dedupe,
     }
     cleaned = clean(df, ops)
-    cleaned.to_csv(args.out, index=False)
+    try:
+        cleaned.to_csv(args.out, index=False)
+    except OSError as e:
+        # pandas raises a bare OSError for a missing parent dir, so strerror can be None
+        print(f"error: can't write {args.out}: {e.strerror or e}", file=sys.stderr)
+        return 1
     print(
         f"wrote {args.out}: {len(cleaned)} rows x {len(cleaned.columns)} cols",
         file=sys.stderr,
@@ -106,8 +120,14 @@ def main(argv=None):
     if args.report:
         # profile the in-memory frame, not a re-read of the file we just wrote
         report = render_report(profile_csv(cleaned, path=args.out))
-        with open(args.report, "w") as f:
-            f.write(report)
+        try:
+            with open(args.report, "w") as f:
+                f.write(report)
+        except OSError as e:
+            print(
+                f"error: can't write {args.report}: {e.strerror or e}", file=sys.stderr
+            )
+            return 1
         print(f"wrote {args.report}", file=sys.stderr)
 
     return 0
