@@ -88,3 +88,26 @@ def test_profile_dataframe_with_path_override(sample_csv):
     p = profile_csv(df, path="sample.csv")
     assert p["path"] == "sample.csv"
     assert p["n_rows"] == 5
+
+
+def _names(path):
+    return [c["name"] for c in profile_csv(path)["columns"]]
+
+
+def test_semicolon_separated(tmp_path):
+    path = tmp_path / "semi.csv"
+    path.write_text("name;age\nAlice;30\nBob;25\n")
+    assert _names(path) == ["name", "age"]
+
+
+def test_tab_separated(tmp_path):
+    path = tmp_path / "tabs.tsv"
+    path.write_text("name\tage\nAlice\t30\nBob\t25\n")
+    assert _names(path) == ["name", "age"]
+
+
+def test_single_column_stays_single(tmp_path):
+    # sniffing this directly would split on a letter; it must stay one column
+    path = tmp_path / "one.csv"
+    path.write_text("name\nAlice\nBob\nCarol\n")
+    assert _names(path) == ["name"]

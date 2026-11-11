@@ -129,3 +129,15 @@ def test_download_before_clean_returns_404(client):
 def test_clean_unknown_file_returns_404(client):
     resp = client.post("/clean/nope", data={})
     assert resp.status_code == 404
+
+
+def test_profile_semicolon_upload_shows_two_columns(client):
+    resp = client.post(
+        "/profile",
+        data={"csv": (io.BytesIO(b"name;age\nAlice;30\nBob;25\n"), "semi.csv")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert "2 columns" in " ".join(html.split())
+    assert "<th>name</th>" in html and "<th>age</th>" in html

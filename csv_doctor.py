@@ -6,7 +6,7 @@ import sys
 
 import pandas as pd
 
-from profiler import profile_csv
+from profiler import load_csv, profile_csv
 from cleaner import clean
 from report import render_report
 
@@ -56,7 +56,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     try:
-        df = pd.read_csv(args.file)
+        df = load_csv(args.file)
     except FileNotFoundError:
         print(f"error: file not found: {args.file}", file=sys.stderr)
         return 1

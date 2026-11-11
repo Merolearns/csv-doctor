@@ -15,7 +15,7 @@ import pandas as pd
 from flask import Flask, Response, abort, render_template, request, send_file
 
 from cleaner import clean
-from profiler import profile_csv
+from profiler import load_csv, profile_csv
 from report import render_report
 
 app = Flask(__name__)
@@ -65,7 +65,7 @@ def read_csv_bytes(data, filename):
     if not data or not data.strip():
         raise ValueError("That file is empty — upload a CSV with some rows in it.")
     try:
-        df = pd.read_csv(io.BytesIO(data))
+        df = load_csv(io.BytesIO(data))
     except pd.errors.EmptyDataError:
         raise ValueError("That file is empty — upload a CSV with some rows in it.")
     except UnicodeDecodeError:

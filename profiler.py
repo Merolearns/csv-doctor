@@ -1,7 +1,7 @@
 """Profiling logic for csv-doctor.
 
-profile_csv() reads a CSV and returns a plain-dict summary: shape, duplicates,
-and per-column stats. Dicts on purpose — easy to dump to JSON later or hand to
+load_csv() reads a CSV (comma, semicolon, or tab separated). profile_csv()
+returns a plain-dict summary: shape, duplicates, and per-column stats. Dicts on purpose — easy to dump to JSON later or hand to
 the report renderer without dragging pandas along.
 """
 
@@ -13,6 +13,21 @@ import pandas as pd
 LOW_CARDINALITY_CUTOFF = 12
 
 _BOOL_WORDS = {"true", "false", "t", "f", "yes", "no", "y", "n", "1", "0"}
+
+
+def load_csv(source):
+    """Read a CSV path or file-like object into a DataFrame.
+
+    Read as comma-separated first. Only if that gives one column whose name
+    contains ';' or a tab, re-read with delimiter sniffing — sniffing a
+    genuinely single-column file directly mis-splits it.
+    """
+    df = pd.read_csv(source)
+    if len(df.columns) == 1 and any(d in str(df.columns[0]) for d in ";\t"):
+        if hasattr(source, "seek"):
+            source.seek(0)
+        df = pd.read_csv(source, sep=None, engine="python")
+    return df
 
 
 def profile_csv(source, top_n=5, path=None):
@@ -28,7 +43,7 @@ def profile_csv(source, top_n=5, path=None):
         df = source
     else:
         # TODO: read in chunks for files that don't fit in memory
-        df = pd.read_csv(source)
+        df = load_csv(source)
         if path is None:
             path = str(source)
     return {
