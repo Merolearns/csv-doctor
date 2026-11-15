@@ -65,6 +65,19 @@ def test_profile_pasted_text(client):
     assert b"Rows" in resp.data
 
 
+def test_profile_oversize_upload_returns_friendly_413(client):
+    big = b"a,b\n" + b"1,2\n" * (11 * 1024 * 1024 // 4)  # ~11 MB of rows
+    resp = client.post(
+        "/profile",
+        data={"csv": (io.BytesIO(big), "big.csv")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 413
+    assert b"10 MB" in resp.data
+    # the app's own page, not Flask's bare "Request Entity Too Large"
+    assert b"csv-doctor" in resp.data
+
+
 def test_profile_empty_file_returns_400(client):
     resp = client.post(
         "/profile",

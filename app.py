@@ -21,6 +21,18 @@ from report import render_report
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB uploads
 
+
+@app.errorhandler(413)
+def handle_too_large(e):
+    # Flask aborts before the view runs when an upload tops
+    # MAX_CONTENT_LENGTH, so without this the user gets its bare
+    # "Request Entity Too Large" page instead of the app's own message.
+    return render_template(
+        "index.html",
+        error="That file is over the 10 MB limit — split it into smaller "
+        "files and upload them one at a time.",
+    ), 413
+
 # Resolve relative to this file so the app works from any working directory.
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SAMPLE_PATH = os.path.join(BASE_DIR, "samples", "messy.csv")
