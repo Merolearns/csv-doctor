@@ -144,6 +144,23 @@ def test_clean_unknown_file_returns_404(client):
     assert resp.status_code == 404
 
 
+def test_unknown_file_id_shows_friendly_404(client):
+    # a stale file_id (server restarted, upload evicted) used to get
+    # Flask's bare 404 page — now it lands back on the upload page
+    resp = client.post("/clean/nope", data={})
+    assert resp.status_code == 404
+    assert b"upload the CSV again" in resp.data
+    resp = client.get("/download/nope")
+    assert resp.status_code == 404
+    assert b"upload the CSV again" in resp.data
+    resp = client.get("/report/nope")
+    assert resp.status_code == 404
+    assert b"upload the CSV again" in resp.data
+    resp = client.get("/nope")
+    assert resp.status_code == 404
+    assert b"upload the CSV again" in resp.data
+
+
 def test_profile_semicolon_upload_shows_two_columns(client):
     resp = client.post(
         "/profile",

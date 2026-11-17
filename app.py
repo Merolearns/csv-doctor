@@ -33,6 +33,19 @@ def handle_too_large(e):
         "files and upload them one at a time.",
     ), 413
 
+
+@app.errorhandler(404)
+def handle_not_found(e):
+    # a stale file_id lands here — the server restarted, or the 10-file
+    # store evicted the upload — as does any mistyped URL. Send the user
+    # back to the upload page with a plain-English note instead of
+    # Flask's bare "Not Found" page.
+    return render_template(
+        "index.html",
+        error="That file or page is no longer here — upload the CSV again "
+        "to start over.",
+    ), 404
+
 # Resolve relative to this file so the app works from any working directory.
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SAMPLE_PATH = os.path.join(BASE_DIR, "samples", "messy.csv")
