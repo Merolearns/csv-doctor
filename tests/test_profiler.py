@@ -111,3 +111,49 @@ def test_single_column_stays_single(tmp_path):
     path = tmp_path / "one.csv"
     path.write_text("name\nAlice\nBob\nCarol\n")
     assert _names(path) == ["name"]
+
+
+def test_chunked_matches_in_memory(sample_csv, monkeypatch):
+    # force several chunks, then the chunked profile must equal the
+    # in-memory one exactly — same shape, duplicates, and per-column stats
+    import profiler
+
+    monkeypatch.setattr(profiler, "CHUNK_ROWS", 2)
+    chunked = profile_csv(sample_csv)
+    df = pd.read_csv(sample_csv)
+    whole = profile_csv(df, path=str(sample_csv))
+    assert chunked == whole
+
+
+def test_chunked_semicolon_separated(tmp_path, monkeypatch):
+    import profiler
+
+    path = tmp_path / "semi.csv"
+    path.write_text("name;age\nAlice;30\nBob;25\nAlice;30\n")
+    monkeypatch.setattr(profiler, "CHUNK_ROWS", 2)
+    p = profile_csv(path)
+    assert p["n_rows"] == 3
+    assert p["duplicate_rows"] == 1
+    assert [c["name"] for c in p["columns"]] == ["name", "age"]
+
+
+def test_chunked_header_only_file(tmp_path, monkeypatch):
+    import profiler
+
+    path = tmp_path / "empty.csv"
+    path.write_text("name,age\n")
+    monkeypatch.setattr(profiler, "CHUNK_ROWS", 2)
+    p = profile_csv(path)
+    assert p["n_rows"] == 0
+    assert [c["inferred_type"] for c in p["columns"]] == ["empty", "empty"]
+
+
+def test_chunked_empty_file_raises(tmp_path, monkeypatch):
+    import profiler
+    from pandas.errors import EmptyDataError
+
+    path = tmp_path / "zero.csv"
+    path.write_text("")
+    monkeypatch.setattr(profiler, "CHUNK_ROWS", 2)
+    with pytest.raises(EmptyDataError):
+        profile_csv(path)

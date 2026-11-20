@@ -5,14 +5,24 @@ returns a plain-dict summary: shape, duplicates, and per-column stats. Dicts on 
 the report renderer without dragging pandas along.
 """
 
+import os
 import warnings
+from collections import Counter
 
 import pandas as pd
 
 # Columns with at most this many distinct values get a "top values" breakdown.
 LOW_CARDINALITY_CUTOFF = 12
 
+# Rows per chunk when profiling a file path — the whole file is never in
+# memory at once, only one chunk plus the per-column counters.
+CHUNK_ROWS = 100_000
+
 _BOOL_WORDS = {"true", "false", "t", "f", "yes", "no", "y", "n", "1", "0"}
+
+# Stands in for NaN in row tuples when counting duplicates — NaN != NaN,
+# so two identical rows with a missing value would otherwise never match.
+_NAN = object()
 
 
 def load_csv(source):
@@ -41,8 +51,11 @@ def profile_csv(source, top_n=5, path=None):
     """
     if isinstance(source, pd.DataFrame):
         df = source
+    elif _is_path(source):
+        # a file path streams in chunks; file-like objects still go
+        # through load_csv() (can't rewind a chunk reader reliably)
+        return _profile_csv_chunked(source, top_n, path)
     else:
-        # TODO: read in chunks for files that don't fit in memory
         df = load_csv(source)
         if path is None:
             path = str(source)
@@ -52,6 +65,96 @@ def profile_csv(source, top_n=5, path=None):
         "n_columns": len(df.columns),
         "duplicate_rows": int(df.duplicated().sum()),
         "columns": [_profile_column(df[col], top_n) for col in df.columns],
+    }
+
+
+def _is_path(source):
+    return isinstance(source, (str, os.PathLike))
+
+
+def _sniff_sep(path):
+    """Delimiter for a path, using the same rule as load_csv()."""
+    head = pd.read_csv(path, nrows=0)
+    if len(head.columns) == 1 and any(d in str(head.columns[0]) for d in ";\t"):
+        return None  # let the python engine sniff it
+    return ","
+
+
+def _is_nan(value):
+    return isinstance(value, float) and value != value
+
+
+def _profile_csv_chunked(source, top_n, path):
+    """Profile a file path in chunks instead of loading it whole.
+
+    Accumulates per-column value counts, null counts, and one hash per
+    distinct row, then rebuilds each column's stats from those counts
+    through the same _profile_column() as the in-memory path — so a
+    chunked profile matches a full-file one. Peak memory is one chunk
+    plus the counters, not the whole file. The trade-off is the
+    counters: a column where nearly every value is different (like an
+    ID column) still keeps one entry per distinct value.
+    """
+    sep = _sniff_sep(source)
+    kwargs = {"chunksize": CHUNK_ROWS}
+    if sep is None:
+        kwargs.update({"sep": None, "engine": "python"})
+
+    columns = None
+    counts, nulls = {}, {}
+    n_rows = 0
+    seen_rows, duplicates = set(), 0
+
+    for chunk in pd.read_csv(source, **kwargs):
+        if columns is None:
+            columns = list(chunk.columns)
+            for col in columns:
+                counts[col] = Counter()
+                nulls[col] = 0
+        n_rows += len(chunk)
+        for row in chunk.itertuples(index=False, name=None):
+            key = tuple(_NAN if _is_nan(v) else v for v in row)
+            if key in seen_rows:
+                duplicates += 1
+            else:
+                seen_rows.add(key)
+            for col, value in zip(columns, row):
+                if _is_nan(value):
+                    nulls[col] += 1
+                else:
+                    counts[col][value] += 1
+
+    if columns is None or n_rows == 0:
+        # header-only file: no rows to accumulate from — profile the
+        # (tiny) frame through the normal path so it matches exactly
+        df = load_csv(source)
+        if path is None:
+            path = str(source)
+        return {
+            "path": path,
+            "n_rows": len(df),
+            "n_columns": len(df.columns),
+            "duplicate_rows": int(df.duplicated().sum()),
+            "columns": [_profile_column(df[col], top_n) for col in df.columns],
+        }
+
+    profiled = []
+    for col in columns:
+        # rebuild one column from its value counts — the nulls were
+        # counted separately, so fix up null_pct afterwards
+        values = []
+        for value, count in counts[col].items():
+            values.extend([value] * count)
+        column = _profile_column(pd.Series(values, name=col), top_n)
+        column["null_pct"] = round(nulls[col] / n_rows * 100, 2)
+        profiled.append(column)
+
+    return {
+        "path": path if path is not None else str(source),
+        "n_rows": n_rows,
+        "n_columns": len(columns),
+        "duplicate_rows": duplicates,
+        "columns": profiled,
     }
 
 

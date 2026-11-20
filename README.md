@@ -107,6 +107,6 @@ pytest
 
 ## Limitations
 
-- The whole file is read into memory, so very large CSVs will be slow or won't fit. Chunked reading is on the TODO list.
+- Profiling from a file path reads in chunks, so a large CSV doesn't have to fit in memory. `clean` and the web app still load the whole file.
 - Type inference is heuristic — a column of `1`s and `0`s is guessed as bool, and dates are whatever `pandas.to_datetime` accepts. Good enough for a first pass, not a validator.
 - `--fillna` fills every column with the same value; `--smart-fill` fills each column from its own data instead (median for numbers, mode for text).
